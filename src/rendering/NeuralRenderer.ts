@@ -1,7 +1,10 @@
 import * as THREE from 'three';
 import { WebGPUManager, RendererFallbackManager } from '../core/WebGPUManager';
+import { NodeSystem } from './NodeSystem';
 import type {
-  PerformanceMetrics
+  PerformanceMetrics,
+  AnalysisResult,
+  ScaledVisualization
 } from '../types';
 
 export class NeuralRenderer {
@@ -17,6 +20,9 @@ export class NeuralRenderer {
   private connectionGroup: THREE.Group;
   private particleGroup: THREE.Group;
   private backgroundGroup: THREE.Group;
+  
+  // Visualization systems
+  private nodeSystem: NodeSystem | null = null;
   
   // Render targets
   private renderTarget: THREE.WebGLRenderTarget | null = null;
@@ -52,6 +58,9 @@ export class NeuralRenderer {
     this.scene.add(this.connectionGroup);
     this.scene.add(this.particleGroup);
     this.scene.add(this.backgroundGroup);
+    
+    // Initialize visualization systems
+    this.nodeSystem = new NodeSystem(this.nodeGroup, this.connectionGroup);
     
     // Initialize with placeholder renderer (will be replaced during init)
     this.renderer = new THREE.WebGLRenderer();
@@ -354,24 +363,15 @@ export class NeuralRenderer {
   }
 
   private updateAnimations(deltaTime: number): void {
-    // Update node animations
-    this.nodeGroup.children.forEach(node => {
-      if (node.userData.animate) {
-        node.userData.animate(deltaTime);
-      }
-    });
+    // Update node system
+    if (this.nodeSystem) {
+      this.nodeSystem.update(deltaTime);
+    }
     
     // Update particle animations
     this.particleGroup.children.forEach(particles => {
       if (particles.userData.animate) {
         particles.userData.animate(deltaTime);
-      }
-    });
-    
-    // Update connection animations
-    this.connectionGroup.children.forEach(connection => {
-      if (connection.userData.animate) {
-        connection.userData.animate(deltaTime);
       }
     });
   }
@@ -404,10 +404,24 @@ export class NeuralRenderer {
 
   // Scene management methods
   clearScene(): void {
-    this.nodeGroup.clear();
-    this.connectionGroup.clear();
+    if (this.nodeSystem) {
+      this.nodeSystem.clearVisualization();
+    }
     this.particleGroup.clear();
     this.backgroundGroup.clear();
+  }
+  
+  /**
+   * Generate visualization from analysis result
+   */
+  generateVisualization(analysisResult: AnalysisResult): ScaledVisualization | null {
+    if (!this.nodeSystem) {
+      console.warn('NodeSystem not initialized');
+      return null;
+    }
+    
+    console.log('🎨 Generating visualization in NeuralRenderer');
+    return this.nodeSystem.generateVisualization(analysisResult);
   }
 
   addNode(node: THREE.Object3D): void {
@@ -454,7 +468,7 @@ export class NeuralRenderer {
       frameRate: this.currentFPS,
       memoryUsage: (performance as any).memory?.usedJSHeapSize / 1024 / 1024 || 0,
       gpuMemory: info.memory?.geometries + info.memory?.textures || 0,
-      nodeCount: this.nodeGroup.children.length,
+      nodeCount: this.nodeSystem?.getNodeCount() || 0,
       particleCount: this.particleGroup.children.length,
       qualityLevel: 1.0,
       loadTime: 0
@@ -472,6 +486,11 @@ export class NeuralRenderer {
     
     // Dispose Three.js resources
     this.clearScene();
+    
+    if (this.nodeSystem) {
+      this.nodeSystem.dispose();
+      this.nodeSystem = null;
+    }
     
     if (this.renderTarget) {
       this.renderTarget.dispose();

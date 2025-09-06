@@ -136,9 +136,20 @@ export function App() {
         dominantEmotion: analysisResult.sentiment.dominant.emotion
       });
 
-      // TODO: Create and render neural visualization from analysis result
-      // This will be implemented in Phase 2-3 with the scaling system and node generation
-      console.log('🎨 Visualization rendering will be implemented in Phase 2-3');
+      // Generate and render neural visualization from analysis result
+      console.log('🎨 Generating neural network visualization...');
+      const visualization = neuralRenderer.current.generateVisualization(analysisResult);
+      
+      if (visualization) {
+        console.log('✅ Visualization rendered successfully:', {
+          actualNodes: visualization.nodes.length,
+          connections: visualization.connections.length,
+          compressionRatio: visualization.scalingInfo.compressionRatio.toFixed(3),
+          processingTime: `${visualization.scalingInfo.processingTime}ms`
+        });
+      } else {
+        console.warn('⚠️ Failed to generate visualization');
+      }
 
       setState(prev => ({
         ...prev,

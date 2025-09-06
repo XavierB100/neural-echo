@@ -442,3 +442,10 @@ export const PERFORMANCE_TARGETS = {
     batteryImpact: { cpuUsage: 30, gpuUsage: 40, thermalLimit: 70 } // percentages/celsius
   }
 } as const;
+
+// Performance profiling interface
+export interface PerformanceProfile {
+  expectedFPS: number;
+  memoryUsage: number; // MB
+  gpuLoad: number; // 0-1
+}
